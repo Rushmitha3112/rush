@@ -1,0 +1,122 @@
+// ============================================================
+// Fraud Model Drift Monitor — Power BI DAX Measures
+// Data sources: drift_summary.csv + predictions_timeline.csv
+// ============================================================
+
+// ---- Drift detection counts --------------------------------
+Total Features Monitored =
+    DISTINCTCOUNT(drift_summary[feature])
+
+Features With High Drift =
+    CALCULATE(
+        DISTINCTCOUNT(drift_summary[feature]),
+        drift_summary[psi_score] >= 0.25
+    )
+
+Features With Medium Drift =
+    CALCULATE(
+        DISTINCTCOUNT(drift_summary[feature]),
+        drift_summary[psi_score] >= 0.1,
+        drift_summary[psi_score] < 0.25
+    )
+
+Features With No Drift =
+    CALCULATE(
+        DISTINCTCOUNT(drift_summary[feature]),
+        drift_summary[psi_score] < 0.1
+    )
+
+High Drift % =
+    DIVIDE([Features With High Drift], [Total Features Monitored], 0) * 100
+
+Drift Alert Flag =
+    IF([Features With High Drift] > 0, "ALERT", "OK")
+
+
+// ---- PSI metrics -------------------------------------------
+Avg PSI Score =
+    AVERAGE(drift_summary[psi_score])
+
+Max PSI Score =
+    MAX(drift_summary[psi_score])
+
+Avg Wasserstein Distance =
+    AVERAGE(drift_summary[wasserstein_dist])
+
+Avg KS Statistic =
+    AVERAGE(drift_summary[ks_statistic])
+
+
+// ---- Model performance metrics -----------------------------
+Current F1 Score =
+    CALCULATE(
+        AVERAGE(predictions_timeline[f1]),
+        LASTDATE(predictions_timeline[batch_date])
+    )
+
+Baseline F1 Score =
+    CALCULATE(
+        AVERAGE(predictions_timeline[f1]),
+        predictions_timeline[scenario] = "Baseline"
+    )
+
+F1 Degradation % =
+    DIVIDE([Baseline F1 Score] - [Current F1 Score], [Baseline F1 Score], 0) * 100
+
+Current Precision =
+    CALCULATE(
+        AVERAGE(predictions_timeline[precision]),
+        LASTDATE(predictions_timeline[batch_date])
+    )
+
+Current Recall =
+    CALCULATE(
+        AVERAGE(predictions_timeline[recall]),
+        LASTDATE(predictions_timeline[batch_date])
+    )
+
+Current Fraud Rate Actual =
+    CALCULATE(
+        AVERAGE(predictions_timeline[fraud_rate_actual]),
+        LASTDATE(predictions_timeline[batch_date])
+    )
+
+Current Fraud Rate Predicted =
+    CALCULATE(
+        AVERAGE(predictions_timeline[fraud_rate_predicted]),
+        LASTDATE(predictions_timeline[batch_date])
+    )
+
+Fraud Rate Prediction Error % =
+    DIVIDE(
+        ABS([Current Fraud Rate Actual] - [Current Fraud Rate Predicted]),
+        [Current Fraud Rate Actual],
+        0
+    ) * 100
+
+
+// ---- Scenario comparisons ----------------------------------
+Night Shift Scenario F1 =
+    CALCULATE([Current F1 Score], predictions_timeline[scenario] = "Night Shift Fraud")
+
+Merchant Attack F1 =
+    CALCULATE([Current F1 Score], predictions_timeline[scenario] = "Merchant Attack")
+
+Feature Drift F1 =
+    CALCULATE([Current F1 Score], predictions_timeline[scenario] = "Feature Drift")
+
+Seasonal Drift F1 =
+    CALCULATE([Current F1 Score], predictions_timeline[scenario] = "Seasonal Shift")
+
+Worst Scenario F1 =
+    MIN(
+        MIN([Night Shift Scenario F1], [Merchant Attack F1]),
+        MIN([Feature Drift F1], [Seasonal Drift F1])
+    )
+
+
+// ---- Rolling metrics (requires dates table) ----------------
+F1 Score MoM Change % =
+    VAR current_mo = CALCULATE([Current F1 Score], DATESINPERIOD('dates'[date], LASTDATE('dates'[date]), -30, DAY))
+    VAR prior_mo   = CALCULATE([Current F1 Score], DATESINPERIOD('dates'[date], LASTDATE('dates'[date]), -60, DAY))
+    RETURN DIVIDE(current_mo - prior_mo, prior_mo, 0) * 100
