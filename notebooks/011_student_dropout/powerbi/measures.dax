@@ -1,0 +1,118 @@
+// ============================================================
+// Student Dropout Prediction — Power BI DAX Measures
+// Data source: artifacts/predictions.csv from notebook
+// ============================================================
+
+// ---- Outcome counts ----------------------------------------
+Total Students =
+    COUNTROWS(predictions)
+
+Dropout Count =
+    CALCULATE([Total Students], predictions[actual_outcome] = "Dropout")
+
+Graduate Count =
+    CALCULATE([Total Students], predictions[actual_outcome] = "Graduate")
+
+Enrolled Count =
+    CALCULATE([Total Students], predictions[actual_outcome] = "Enrolled")
+
+Dropout Rate % =
+    DIVIDE([Dropout Count], [Total Students], 0) * 100
+
+Graduation Rate % =
+    DIVIDE([Graduate Count], [Total Students], 0) * 100
+
+
+// ---- Model performance -------------------------------------
+Correct Predictions =
+    COUNTROWS(
+        FILTER(predictions, predictions[actual_outcome] = predictions[predicted_outcome])
+    )
+
+Model Accuracy % =
+    DIVIDE([Correct Predictions], [Total Students], 0) * 100
+
+True Positive (Dropout Caught) =
+    CALCULATE(
+        [Total Students],
+        predictions[actual_outcome] = "Dropout",
+        predictions[predicted_outcome] = "Dropout"
+    )
+
+False Negative (Missed Dropout) =
+    CALCULATE(
+        [Total Students],
+        predictions[actual_outcome] = "Dropout",
+        predictions[predicted_outcome] <> "Dropout"
+    )
+
+Recall (Dropout) % =
+    DIVIDE([True Positive (Dropout Caught)],
+           [True Positive (Dropout Caught)] + [False Negative (Missed Dropout)], 0) * 100
+
+
+// ---- Risk banding ------------------------------------------
+High Risk Count =
+    CALCULATE([Total Students], predictions[dropout_probability] >= 0.7)
+
+Medium Risk Count =
+    CALCULATE([Total Students],
+        predictions[dropout_probability] >= 0.4,
+        predictions[dropout_probability] < 0.7)
+
+Low Risk Count =
+    CALCULATE([Total Students], predictions[dropout_probability] < 0.4)
+
+High Risk % =
+    DIVIDE([High Risk Count], [Total Students], 0) * 100
+
+
+// ---- GPA metrics -------------------------------------------
+Avg GPA 1st Semester =
+    AVERAGE(predictions[gpa_1st_sem])
+
+Avg GPA 2nd Semester =
+    AVERAGE(predictions[gpa_2nd_sem])
+
+Avg GPA Delta =
+    [Avg GPA 2nd Semester] - [Avg GPA 1st Semester]
+
+Dropout Avg GPA Drop =
+    CALCULATE(
+        AVERAGE(predictions[gpa_2nd_sem]) - AVERAGE(predictions[gpa_1st_sem]),
+        predictions[actual_outcome] = "Dropout"
+    )
+
+Graduate Avg GPA Gain =
+    CALCULATE(
+        AVERAGE(predictions[gpa_2nd_sem]) - AVERAGE(predictions[gpa_1st_sem]),
+        predictions[actual_outcome] = "Graduate"
+    )
+
+
+// ---- Unit credit metrics -----------------------------------
+Avg Units Enrolled =
+    AVERAGE(predictions[units_enrolled])
+
+Avg Units Approved =
+    AVERAGE(predictions[units_approved])
+
+Avg Approval Rate % =
+    DIVIDE([Avg Units Approved], [Avg Units Enrolled], 0) * 100
+
+Dropout Avg Approval Rate % =
+    CALCULATE(
+        DIVIDE(AVERAGE(predictions[units_approved]), AVERAGE(predictions[units_enrolled]), 0) * 100,
+        predictions[actual_outcome] = "Dropout"
+    )
+
+
+// ---- Scholarship impact ------------------------------------
+Scholarship Dropout Rate % =
+    CALCULATE([Dropout Rate %], predictions[scholarship] = "Yes")
+
+No Scholarship Dropout Rate % =
+    CALCULATE([Dropout Rate %], predictions[scholarship] = "No")
+
+Scholarship Protection Effect % =
+    [No Scholarship Dropout Rate %] - [Scholarship Dropout Rate %]
