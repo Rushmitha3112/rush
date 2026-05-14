@@ -1,0 +1,118 @@
+// ============================================================
+// IEX India DAM Price Forecasting — Power BI DAX Measures
+// Paste these into the DAX editor in Power BI Desktop
+// Data source: iex_dam_merged.csv (Date, Block, MCP columns)
+// ============================================================
+
+// ---- Core price metrics ------------------------------------
+Average MCP =
+    AVERAGE(iex_dam[mcp])
+
+Median MCP =
+    MEDIAN(iex_dam[mcp])
+
+Max MCP =
+    MAX(iex_dam[mcp])
+
+Min MCP =
+    MIN(iex_dam[mcp])
+
+MCP Volatility (StdDev) =
+    STDEV.P(iex_dam[mcp])
+
+Price Spike Count =
+    COUNTROWS(
+        FILTER(iex_dam, iex_dam[mcp] > 5000)
+    )
+
+
+// ---- Volume / row counts -----------------------------------
+Total Blocks =
+    COUNTROWS(iex_dam)
+
+Total Trading Days =
+    DISTINCTCOUNT(iex_dam[date])
+
+
+// ---- Year-over-year comparison -----------------------------
+Avg MCP Prior Year =
+    CALCULATE(
+        [Average MCP],
+        SAMEPERIODLASTYEAR('dates'[date])
+    )
+
+MCP YoY Change % =
+    VAR current_avg = [Average MCP]
+    VAR prior_avg   = [Avg MCP Prior Year]
+    RETURN DIVIDE(current_avg - prior_avg, prior_avg, 0) * 100
+
+
+// ---- Peak vs off-peak (blocks 33-64 = 08:00-16:00) --------
+Peak Hour Avg MCP =
+    CALCULATE(
+        [Average MCP],
+        iex_dam[block] >= 33 && iex_dam[block] <= 64
+    )
+
+Off-Peak Avg MCP =
+    CALCULATE(
+        [Average MCP],
+        iex_dam[block] < 33 || iex_dam[block] > 64
+    )
+
+Peak Premium % =
+    DIVIDE([Peak Hour Avg MCP] - [Off-Peak Avg MCP], [Off-Peak Avg MCP], 0) * 100
+
+
+// ---- Weekday vs weekend ------------------------------------
+Weekday Avg MCP =
+    CALCULATE(
+        [Average MCP],
+        WEEKDAY(iex_dam[date], 2) <= 5
+    )
+
+Weekend Avg MCP =
+    CALCULATE(
+        [Average MCP],
+        WEEKDAY(iex_dam[date], 2) > 5
+    )
+
+Weekend Discount % =
+    DIVIDE([Weekday Avg MCP] - [Weekend Avg MCP], [Weekday Avg MCP], 0) * 100
+
+
+// ---- Rolling 30-day average (requires dates table) ---------
+Rolling 30d Avg MCP =
+    CALCULATE(
+        [Average MCP],
+        DATESINPERIOD('dates'[date], LASTDATE('dates'[date]), -30, DAY)
+    )
+
+Rolling 90d Avg MCP =
+    CALCULATE(
+        [Average MCP],
+        DATESINPERIOD('dates'[date], LASTDATE('dates'[date]), -90, DAY)
+    )
+
+
+// ---- COVID & event period flags ----------------------------
+COVID Period Avg MCP =
+    CALCULATE(
+        [Average MCP],
+        'dates'[date] >= DATE(2020, 3, 25) && 'dates'[date] <= DATE(2020, 9, 30)
+    )
+
+Coal Shortage Period Avg MCP =
+    CALCULATE(
+        [Average MCP],
+        'dates'[date] >= DATE(2021, 9, 1) && 'dates'[date] <= DATE(2022, 3, 31)
+    )
+
+Baseline Avg MCP (2018-2019) =
+    CALCULATE(
+        [Average MCP],
+        'dates'[date] >= DATE(2018, 1, 1) && 'dates'[date] <= DATE(2019, 12, 31)
+    )
+
+COVID Impact % =
+    DIVIDE([COVID Period Avg MCP] - [Baseline Avg MCP (2018-2019)], [Baseline Avg MCP (2018-2019)], 0) * 100

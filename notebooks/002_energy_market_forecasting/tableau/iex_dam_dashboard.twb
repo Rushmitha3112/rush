@@ -1,0 +1,185 @@
+<?xml version='1.0' encoding='utf-8' ?>
+<workbook source-build='2023.3.0' source-platform='mac' version='21.3' xmlns:user='http://www.tableausoftware.com/xml/user'>
+
+  <datasources>
+    <datasource caption='IEX DAM 2015-2022' name='iex_dam' inline='true'>
+      <!-- Connect to the merged CSV after running the notebook -->
+      <connection class='textscan' filename='../../data/iex/iex_dam_merged.csv'
+                  separator=',' locale='en_US'>
+        <relation name='iex_dam_merged' type='text'/>
+      </connection>
+      <column datatype='date'    name='[date]'       role='dimension' type='ordinal'/>
+      <column datatype='integer' name='[block]'      role='dimension' type='ordinal'/>
+      <column datatype='real'    name='[mcp]'        role='measure'   type='quantitative' caption='MCP (Rs/MWh)'/>
+      <!-- calculated fields -->
+      <column caption='Year'        datatype='integer' name='[calc_year]'    role='dimension' type='ordinal'>
+        <calculation class='tableau' formula='YEAR([date])'/>
+      </column>
+      <column caption='Month'       datatype='integer' name='[calc_month]'   role='dimension' type='ordinal'>
+        <calculation class='tableau' formula='MONTH([date])'/>
+      </column>
+      <column caption='Day of Week' datatype='string'  name='[calc_dow]'     role='dimension' type='nominal'>
+        <calculation class='tableau' formula='DATENAME("weekday",[date])'/>
+      </column>
+      <column caption='Hour'        datatype='integer' name='[calc_hour]'    role='dimension' type='ordinal'>
+        <calculation class='tableau' formula='INT(([block]-1)*15/60)'/>
+      </column>
+      <column caption='Is Weekend'  datatype='boolean' name='[calc_weekend]' role='dimension' type='nominal'>
+        <calculation class='tableau' formula='DATEPART("weekday",[date]) IN (1,7)'/>
+      </column>
+    </datasource>
+  </datasources>
+
+  <worksheets>
+
+    <!-- Sheet 1: 8-Year MCP Trend Line -->
+    <worksheet name='8-Year MCP Trend'>
+      <table>
+        <view>
+          <datasources>
+            <datasource name='iex_dam' caption='IEX DAM 2015-2022'/>
+          </datasources>
+          <datasource-dependencies datasource='iex_dam'>
+            <column-instance column='[date]'  derivation='Month' name='[month:date:ok]' pivot='key' type='ordinal'/>
+            <column-instance column='[mcp]'   derivation='Avg'   name='[avg:mcp:qk]'   pivot='key' type='quantitative'/>
+          </datasource-dependencies>
+          <mark class='Line'/>
+          <encoding>
+            <column field='[month:date:ok]'  type='ordinal'/>
+            <row    field='[avg:mcp:qk]'     type='quantitative'/>
+            <color  field='[calc_year]'      type='ordinal' palette='tableau-colorblind10'/>
+          </encoding>
+        </view>
+        <style>
+          <style-rule element='view'>
+            <encoding attr='display-title' value='Monthly Average MCP — IEX DAM (2015–2022)'/>
+          </style-rule>
+        </style>
+      </table>
+    </worksheet>
+
+    <!-- Sheet 2: Year-over-Year Box Plot -->
+    <worksheet name='MCP Distribution by Year'>
+      <table>
+        <view>
+          <datasources>
+            <datasource name='iex_dam'/>
+          </datasources>
+          <datasource-dependencies datasource='iex_dam'>
+            <column-instance column='[calc_year]' derivation='None' name='[none:calc_year:ok]' pivot='key' type='ordinal'/>
+            <column-instance column='[mcp]'       derivation='None' name='[none:mcp:qk]'       pivot='key' type='quantitative'/>
+          </datasource-dependencies>
+          <mark class='Circle'/>
+          <encoding>
+            <column field='[none:calc_year:ok]' type='ordinal'/>
+            <row    field='[none:mcp:qk]'       type='quantitative'/>
+          </encoding>
+        </view>
+        <!-- Add box plot via Analytics pane in Tableau Desktop -->
+      </table>
+    </worksheet>
+
+    <!-- Sheet 3: Intra-Day MCP Heatmap (Hour × Day-of-week) -->
+    <worksheet name='Intra-Day Heatmap'>
+      <table>
+        <view>
+          <datasources>
+            <datasource name='iex_dam'/>
+          </datasources>
+          <datasource-dependencies datasource='iex_dam'>
+            <column-instance column='[calc_hour]' derivation='None' name='[none:calc_hour:ok]' pivot='key' type='ordinal'/>
+            <column-instance column='[calc_dow]'  derivation='None' name='[none:calc_dow:nk]'  pivot='key' type='nominal'/>
+            <column-instance column='[mcp]'       derivation='Avg'  name='[avg:mcp:qk]'        pivot='key' type='quantitative'/>
+          </datasource-dependencies>
+          <mark class='Square'/>
+          <encoding>
+            <column field='[none:calc_hour:ok]' type='ordinal'/>
+            <row    field='[none:calc_dow:nk]'  type='nominal'/>
+            <color  field='[avg:mcp:qk]'        type='quantitative' palette='orange-blue-diverging'/>
+            <size   value='0.9'/>
+          </encoding>
+        </view>
+        <style>
+          <style-rule element='view'>
+            <encoding attr='display-title' value='Average MCP Heatmap — Hour of Day × Day of Week'/>
+          </style-rule>
+        </style>
+      </table>
+    </worksheet>
+
+    <!-- Sheet 4: Year × Month Average MCP Heatmap -->
+    <worksheet name='Year-Month MCP Heatmap'>
+      <table>
+        <view>
+          <datasources>
+            <datasource name='iex_dam'/>
+          </datasources>
+          <datasource-dependencies datasource='iex_dam'>
+            <column-instance column='[calc_month]' derivation='None' name='[none:calc_month:ok]' pivot='key' type='ordinal'/>
+            <column-instance column='[calc_year]'  derivation='None' name='[none:calc_year:ok]'  pivot='key' type='ordinal'/>
+            <column-instance column='[mcp]'        derivation='Avg'  name='[avg:mcp:qk]'         pivot='key' type='quantitative'/>
+          </datasource-dependencies>
+          <mark class='Square'/>
+          <encoding>
+            <column field='[none:calc_month:ok]'  type='ordinal'/>
+            <row    field='[none:calc_year:ok]'   type='ordinal'/>
+            <color  field='[avg:mcp:qk]'          type='quantitative' palette='red-gold'/>
+            <label  field='[avg:mcp:qk]'          type='quantitative' format='#,##0'/>
+            <size   value='0.9'/>
+          </encoding>
+        </view>
+        <style>
+          <style-rule element='view'>
+            <encoding attr='display-title' value='Average MCP (Rs/MWh) — Year × Month'/>
+          </style-rule>
+        </style>
+      </table>
+    </worksheet>
+
+    <!-- Sheet 5: Weekday vs Weekend MCP comparison -->
+    <worksheet name='Weekday vs Weekend'>
+      <table>
+        <view>
+          <datasources>
+            <datasource name='iex_dam'/>
+          </datasources>
+          <datasource-dependencies datasource='iex_dam'>
+            <column-instance column='[calc_year]'    derivation='None' name='[none:calc_year:ok]'    pivot='key' type='ordinal'/>
+            <column-instance column='[calc_weekend]' derivation='None' name='[none:calc_weekend:nk]' pivot='key' type='nominal'/>
+            <column-instance column='[mcp]'          derivation='Avg'  name='[avg:mcp:qk]'           pivot='key' type='quantitative'/>
+          </datasource-dependencies>
+          <mark class='Bar'/>
+          <encoding>
+            <column field='[none:calc_year:ok]'    type='ordinal'/>
+            <row    field='[avg:mcp:qk]'           type='quantitative'/>
+            <color  field='[none:calc_weekend:nk]' type='nominal'/>
+          </encoding>
+        </view>
+        <style>
+          <style-rule element='view'>
+            <encoding attr='display-title' value='Weekday vs Weekend Average MCP by Year'/>
+          </style-rule>
+        </style>
+      </table>
+    </worksheet>
+
+  </worksheets>
+
+  <dashboards>
+    <dashboard name='IEX DAM Forecasting Dashboard'>
+      <size maxheight='1080' maxwidth='1920' minheight='768' minwidth='1024'/>
+      <zones>
+        <zone type='layout-flow' id='1' w='1800' h='1000' x='60' y='40'>
+          <zone type='view' id='2' w='1800' h='350' name='8-Year MCP Trend'/>
+          <zone type='layout-flow' layoutflow='row' id='3' w='1800' h='300'>
+            <zone type='view' id='4' w='600' h='300' name='Year-Month MCP Heatmap'/>
+            <zone type='view' id='5' w='600' h='300' name='Intra-Day Heatmap'/>
+            <zone type='view' id='6' w='600' h='300' name='Weekday vs Weekend'/>
+          </zone>
+          <zone type='view' id='7' w='1800' h='350' name='MCP Distribution by Year'/>
+        </zone>
+      </zones>
+    </dashboard>
+  </dashboards>
+
+</workbook>
