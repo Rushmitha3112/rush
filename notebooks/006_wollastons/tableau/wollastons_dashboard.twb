@@ -1,0 +1,207 @@
+<?xml version='1.0' encoding='utf-8' ?>
+<workbook source-build='2023.3.0' source-platform='mac' version='21.3' xmlns:user='http://www.tableausoftware.com/xml/user'>
+  <preferences>
+    <color-palette name='Wollaston Color Theme' type='regular'>
+      <color>#C0392B</color><color>#2980B9</color><color>#27AE60</color>
+      <color>#E67E22</color><color>#8E44AD</color><color>#16A085</color><color>#2C3E50</color>
+    </color-palette>
+  </preferences>
+
+  <datasources>
+    <datasource caption="Wollaston's PostgreSQL" name="wollastons_db" inline="true">
+      <connection class='postgres' dbname='wollastons' port='5432' schema='public' server='localhost' username='postgres'>
+        <relation name='vw_top_selling' type='table' table='[public].[vw_top_selling]'/>
+        <relation name='vw_revenue_by_category' type='table' table='[public].[vw_revenue_by_category]'/>
+        <relation name='vw_payment_mix' type='table' table='[public].[vw_payment_mix]'/>
+        <relation name='vw_low_stock' type='table' table='[public].[vw_low_stock]'/>
+        <relation name='vw_hourly_sales' type='table' table='[public].[vw_hourly_sales]'/>
+        <relation name='vw_inventory_turnover' type='table' table='[public].[vw_inventory_turnover]'/>
+      </connection>
+      <column datatype='string'  name='[name]'          role='dimension' type='nominal'/>
+      <column datatype='string'  name='[category]'      role='dimension' type='nominal'/>
+      <column datatype='string'  name='[sku]'           role='dimension' type='nominal'/>
+      <column datatype='integer' name='[units_sold]'    role='measure'   type='quantitative'/>
+      <column datatype='real'    name='[revenue]'       role='measure'   type='quantitative'/>
+      <column datatype='real'    name='[gross_profit]'  role='measure'   type='quantitative'/>
+      <column datatype='real'    name='[margin_pct]'    role='measure'   type='quantitative'/>
+      <column datatype='string'  name='[method_name]'   role='dimension' type='nominal'/>
+      <column datatype='integer' name='[num_transactions]' role='measure' type='quantitative'/>
+      <column datatype='real'    name='[avg_basket_size]'  role='measure' type='quantitative'/>
+      <column datatype='integer' name='[day_of_week]'   role='dimension' type='ordinal'/>
+      <column datatype='integer' name='[hour_of_day]'   role='dimension' type='ordinal'/>
+      <column datatype='integer' name='[qty_on_hand]'   role='measure'   type='quantitative'/>
+      <column datatype='integer' name='[reorder_level]' role='measure'   type='quantitative'/>
+    </datasource>
+  </datasources>
+
+  <worksheets>
+
+    <!-- Sheet 1: Top 10 Products by Revenue (horizontal bar) -->
+    <worksheet name='Top 10 Products by Revenue'>
+      <table>
+        <view>
+          <datasources>
+            <datasource name='wollastons_db' caption="Wollaston's PostgreSQL"/>
+          </datasources>
+          <datasource-dependencies datasource='wollastons_db'>
+            <column-instance column='[name]'     derivation='None' name='[none:name:nk]'    pivot='key' type='nominal'/>
+            <column-instance column='[revenue]'  derivation='Sum'  name='[sum:revenue:qk]'  pivot='key' type='quantitative'/>
+          </datasource-dependencies>
+          <filter class='top' column='[sum:revenue:qk]' end='10' units='records' first='true'/>
+          <sort class='explicit' direction='descending' column='[sum:revenue:qk]'/>
+          <mark class='Bar'/>
+          <encoding>
+            <column field='[sum:revenue:qk]'  type='quantitative'/>
+            <row    field='[none:name:nk]'    type='nominal' sort='descending-sum-[sum:revenue:qk]'/>
+            <color  field='[none:name:nk]'    type='nominal'/>
+            <label  field='[sum:revenue:qk]'  type='quantitative' format='$#,##0'/>
+          </encoding>
+        </view>
+        <style>
+          <style-rule element='view'>
+            <encoding attr='display-title' value='Top 10 Products by Revenue — Wollaston&apos;s'/>
+          </style-rule>
+        </style>
+      </table>
+    </worksheet>
+
+    <!-- Sheet 2: Category Revenue and Margin (side-by-side bars) -->
+    <worksheet name='Revenue and Margin by Category'>
+      <table>
+        <view>
+          <datasources>
+            <datasource name='wollastons_db'/>
+          </datasources>
+          <datasource-dependencies datasource='wollastons_db'>
+            <column-instance column='[category]'     derivation='None' name='[none:category:nk]'    pivot='key' type='nominal'/>
+            <column-instance column='[revenue]'      derivation='Sum'  name='[sum:revenue:qk]'      pivot='key' type='quantitative'/>
+            <column-instance column='[gross_profit]' derivation='Sum'  name='[sum:gross_profit:qk]' pivot='key' type='quantitative'/>
+            <column-instance column='[margin_pct]'   derivation='Avg'  name='[avg:margin_pct:qk]'   pivot='key' type='quantitative'/>
+          </datasource-dependencies>
+          <mark class='Bar'/>
+          <encoding>
+            <column field='[none:category:nk]' type='nominal'/>
+            <row    field='[sum:revenue:qk]'   type='quantitative'/>
+            <color  field='[none:category:nk]' type='nominal'/>
+            <label  field='[avg:margin_pct:qk]' type='quantitative' format='0.0"%"'/>
+          </encoding>
+        </view>
+      </table>
+    </worksheet>
+
+    <!-- Sheet 3: Payment Method Split (pie) -->
+    <worksheet name='Payment Method Split'>
+      <table>
+        <view>
+          <datasources>
+            <datasource name='wollastons_db'/>
+          </datasources>
+          <datasource-dependencies datasource='wollastons_db'>
+            <column-instance column='[method_name]'    derivation='None' name='[none:method_name:nk]' pivot='key' type='nominal'/>
+            <column-instance column='[num_transactions]' derivation='Sum' name='[sum:num_transactions:qk]' pivot='key' type='quantitative'/>
+            <column-instance column='[revenue]'        derivation='Sum'  name='[sum:revenue:qk]'      pivot='key' type='quantitative'/>
+          </datasource-dependencies>
+          <mark class='Pie'/>
+          <encoding>
+            <angle  field='[sum:revenue:qk]'         type='quantitative'/>
+            <color  field='[none:method_name:nk]'    type='nominal'/>
+            <label  field='[sum:revenue:qk]'         type='quantitative' format='$#,##0'/>
+          </encoding>
+        </view>
+      </table>
+    </worksheet>
+
+    <!-- Sheet 4: Low Stock Alert Panel -->
+    <worksheet name='Low Stock Alert Panel'>
+      <table>
+        <view>
+          <datasources>
+            <datasource name='wollastons_db'/>
+          </datasources>
+          <datasource-dependencies datasource='wollastons_db'>
+            <column-instance column='[name]'          derivation='None' name='[none:name:nk]'          pivot='key' type='nominal'/>
+            <column-instance column='[qty_on_hand]'   derivation='Sum'  name='[sum:qty_on_hand:qk]'    pivot='key' type='quantitative'/>
+            <column-instance column='[reorder_level]' derivation='Avg'  name='[avg:reorder_level:qk]'  pivot='key' type='quantitative'/>
+            <column-instance column='[category]'      derivation='None' name='[none:category:nk]'      pivot='key' type='nominal'/>
+          </datasource-dependencies>
+          <mark class='Bar'/>
+          <encoding>
+            <row    field='[none:name:nk]'           type='nominal' sort='ascending-sum-[sum:qty_on_hand:qk]'/>
+            <column field='[sum:qty_on_hand:qk]'     type='quantitative'/>
+            <color  field='[none:category:nk]'       type='nominal'/>
+          </encoding>
+          <!-- Reference line at reorder_level would be added in Tableau UI -->
+        </view>
+        <style>
+          <style-rule element='view'>
+            <encoding attr='display-title' value='Low Stock Alert — Items Needing Reorder'/>
+          </style-rule>
+        </style>
+      </table>
+    </worksheet>
+
+    <!-- Sheet 5: Hourly Traffic Heatmap -->
+    <worksheet name='Hourly Traffic Heatmap'>
+      <table>
+        <view>
+          <datasources>
+            <datasource name='wollastons_db'/>
+          </datasources>
+          <datasource-dependencies datasource='wollastons_db'>
+            <column-instance column='[day_of_week]'      derivation='None' name='[none:day_of_week:ok]'      pivot='key' type='ordinal'/>
+            <column-instance column='[hour_of_day]'      derivation='None' name='[none:hour_of_day:ok]'      pivot='key' type='ordinal'/>
+            <column-instance column='[num_transactions]' derivation='Sum'  name='[sum:num_transactions:qk]'  pivot='key' type='quantitative'/>
+            <column-instance column='[revenue]'          derivation='Sum'  name='[sum:revenue:qk]'           pivot='key' type='quantitative'/>
+          </datasource-dependencies>
+          <mark class='Square'/>
+          <encoding>
+            <column field='[none:hour_of_day:ok]'      type='ordinal'/>
+            <row    field='[none:day_of_week:ok]'      type='ordinal'/>
+            <color  field='[sum:num_transactions:qk]'  type='quantitative' palette='blue-teal'/>
+            <size   value='0.9'/>
+          </encoding>
+        </view>
+        <style>
+          <style-rule element='view'>
+            <encoding attr='display-title' value='Transaction Heatmap — Hour of Day × Day of Week'/>
+          </style-rule>
+        </style>
+      </table>
+    </worksheet>
+
+  </worksheets>
+
+  <dashboards>
+    <dashboard name="Wollaston's Operations Dashboard">
+      <size maxheight='1080' maxwidth='1920' minheight='768' minwidth='1024'/>
+      <zones>
+        <zone type='layout-flow' id='1' w='1800' h='1000' x='60' y='40'>
+          <zone type='layout-flow' layoutflow='row' id='2' w='1800' h='480'>
+            <zone type='view' id='3' w='600' h='480' name='Top 10 Products by Revenue'/>
+            <zone type='view' id='4' w='600' h='480' name='Revenue and Margin by Category'/>
+            <zone type='view' id='5' w='600' h='480' name='Payment Method Split'/>
+          </zone>
+          <zone type='layout-flow' layoutflow='row' id='6' w='1800' h='480'>
+            <zone type='view' id='7' w='900' h='480' name='Low Stock Alert Panel'/>
+            <zone type='view' id='8' w='900' h='480' name='Hourly Traffic Heatmap'/>
+          </zone>
+        </zone>
+      </zones>
+      <layout>
+        <zone type='layout-flow' id='1' w='1800' h='1000' x='60' y='40'/>
+      </layout>
+      <devicelayouts>
+        <devicelayout name='Phone'>
+          <size maxheight='900' maxwidth='500'/>
+        </devicelayout>
+      </devicelayouts>
+      <style>
+        <style-rule element='dashboard-title'>
+          <encoding attr='font-size' value='18'/>
+          <encoding attr='font-weight' value='bold'/>
+        </style-rule>
+      </style>
+    </dashboard>
+  </dashboards>
+
+</workbook>

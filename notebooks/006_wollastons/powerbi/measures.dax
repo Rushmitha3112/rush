@@ -1,0 +1,77 @@
+// ============================================================
+// Wollaston's Campus Market — Power BI DAX Measures
+// Paste these into the DAX editor in Power BI Desktop
+// ============================================================
+
+// ---- Revenue metrics ----------------------------------------
+Total Revenue =
+    SUMX(transaction_items, transaction_items[qty] * transaction_items[unit_price])
+
+Total Cost =
+    SUMX(
+        RELATEDTABLE(transaction_items),
+        transaction_items[qty] * RELATED(products[cost_price])
+    )
+
+Gross Profit =
+    [Total Revenue] - [Total Cost]
+
+Gross Margin % =
+    DIVIDE([Gross Profit], [Total Revenue], 0) * 100
+
+Avg Basket Size =
+    AVERAGEX(transactions, transactions[total_amount])
+
+
+// ---- Volume metrics -----------------------------------------
+Units Sold =
+    SUM(transaction_items[qty])
+
+Number of Transactions =
+    COUNTROWS(transactions)
+
+
+// ---- Inventory metrics --------------------------------------
+Items Below Reorder Level =
+    COUNTROWS(
+        FILTER(
+            inventory,
+            inventory[qty_on_hand] <= RELATED(products[reorder_level])
+        )
+    )
+
+Total Inventory Value (Cost) =
+    SUMX(
+        inventory,
+        inventory[qty_on_hand] * RELATED(products[cost_price])
+    )
+
+Inventory Turnover (30d) =
+    DIVIDE(
+        CALCULATE([Units Sold], DATESINPERIOD('dates'[date], LASTDATE('dates'[date]), -30, DAY)),
+        AVERAGEX(inventory, inventory[qty_on_hand]),
+        0
+    )
+
+
+// ---- Payment breakdown --------------------------------------
+Dining Dollars Revenue =
+    CALCULATE([Total Revenue], payment_methods[method_name] = "Dining Dollars")
+
+Card Revenue =
+    CALCULATE([Total Revenue], payment_methods[method_name] IN {"Credit/Debit", "NUCard"})
+
+Dining Dollars Share % =
+    DIVIDE([Dining Dollars Revenue], [Total Revenue], 0) * 100
+
+
+// ---- Time intelligence --------------------------------------
+Revenue WoW Change % =
+    VAR current_week = [Total Revenue]
+    VAR prior_week   = CALCULATE([Total Revenue], DATEADD('dates'[date], -7, DAY))
+    RETURN DIVIDE(current_week - prior_week, prior_week, 0) * 100
+
+Revenue MoM Change % =
+    VAR current_month = [Total Revenue]
+    VAR prior_month   = CALCULATE([Total Revenue], DATEADD('dates'[date], -1, MONTH))
+    RETURN DIVIDE(current_month - prior_month, prior_month, 0) * 100
