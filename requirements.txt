@@ -1,0 +1,52 @@
+# core
+pandas
+numpy
+matplotlib
+seaborn
+scikit-learn
+jupyter
+notebook
+python-dotenv
+tqdm
+
+# classical ML extras
+xgboost
+statsmodels
+imbalanced-learn
+surprise
+
+# deep learning
+torch
+transformers
+peft
+accelerate
+datasets
+
+# LLM / RAG
+llama-index
+openai
+qdrant-client
+chromadb
+langchain
+langchain-community
+langgraph
+
+# MLOps / eval
+mlflow
+evidently
+deepeval
+wandb
+
+# serving
+fastapi
+uvicorn
+streamlit
+pydantic
+
+# misc
+beautifulsoup4
+requests
+pypdf
+GitPython
+psycopg2-binary
+redis
