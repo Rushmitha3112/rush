@@ -1,0 +1,39 @@
+name: 112 last mile pipeline
+
+on:
+  push:
+    paths: ["pipelines/112_last_mile_lateness/**", ".github/workflows/pipeline-112-last-mile.yml"]
+  pull_request:
+    paths: ["pipelines/112_last_mile_lateness/**"]
+
+defaults:
+  run:
+    working-directory: pipelines/112_last_mile_lateness
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: {distribution: temurin, java-version: "17"}
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.11", cache: pip, cache-dependency-path: pipelines/112_last_mile_lateness/requirements*.txt}
+      - run: pip install -r requirements-dev.txt
+      - run: ruff check src tests dashboard
+      - run: python -m pytest -q
+        env: {PYTHONPATH: src}
+
+  terraform:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with: {terraform_version: 1.9.8}
+      - run: make package
+      - run: terraform init -backend=false -input=false
+        working-directory: pipelines/112_last_mile_lateness/infra/terraform
+      - run: terraform fmt -check
+        working-directory: pipelines/112_last_mile_lateness/infra/terraform
+      - run: terraform validate
+        working-directory: pipelines/112_last_mile_lateness/infra/terraform
