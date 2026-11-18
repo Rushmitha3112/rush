@@ -4,6 +4,14 @@ End-to-end projects across classical ML, time series, computer vision, NLP, LLMs
 
 The first 22 projects (`001-022`) are the most substantive — production-relevant LLM, agent, and MLOps work. Projects `023-111` are a broader exploration covering classical ML, CV, and NLP fundamentals.
 
+## Data engineering (112+)
+
+Production style pipelines, each in its own folder under `pipelines/` with tests, CI, infrastructure as code and a design doc.
+
+| # | Project | Stack | Data |
+|---|---------|-------|------|
+| 112 | [Last mile lateness pipeline](pipelines/112_last_mile_lateness/) | S3, Lambda, Glue PySpark, Redshift Serverless, Terraform, data quality gates | Amazon Last Mile Routing (6,112 real routes) |
+
 ## Featured
 
 These are the five I'd send a hiring manager first:
