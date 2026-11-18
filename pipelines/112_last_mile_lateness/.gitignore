@@ -1,0 +1,15 @@
+.venv/
+data/
+__pycache__/
+*.pyc
+.env
+spark-warehouse/
+metastore_db/
+derby.log
+.pytest_cache/
+.ruff_cache/
+artifacts/
+infra/terraform/.terraform/
+infra/terraform/*.tfstate*
+build/
+infra/terraform/.terraform.lock.hcl
