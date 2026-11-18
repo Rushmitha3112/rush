@@ -1,0 +1,32 @@
+# Local stand-ins: LocalStack for S3, Postgres for Redshift.
+# Spark runs from the venv (pip pyspark), the same transform code Glue runs.
+services:
+  localstack:
+    image: localstack/localstack:3.8.1
+    environment:
+      SERVICES: s3
+    ports: ["4566:4566"]
+    volumes:
+      - ./localstack/init-buckets.sh:/etc/localstack/init/ready.d/init-buckets.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", "awslocal s3 ls s3://lastmile-curated"]
+      interval: 5s
+      retries: 20
+
+  warehouse:
+    image: postgres:16.4
+    environment:
+      POSTGRES_USER: lastmile
+      POSTGRES_PASSWORD: lastmile
+      POSTGRES_DB: lastmile
+    ports: ["5433:5432"]
+    volumes:
+      - pg:/var/lib/postgresql/data
+      - ./sql/postgres:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U lastmile"]
+      interval: 5s
+      retries: 10
+
+volumes:
+  pg:
